@@ -1,8 +1,10 @@
 # pip install opencv-python
+import os
 import cv2
 import time
 import emailing
 import glob
+from threading import Thread
 
 video = cv2.VideoCapture(0) # 0 if you have only one camera, 1 would be secondary camera.
 time.sleep(1)  # We give the camera some time to load
@@ -10,6 +12,11 @@ time.sleep(1)  # We give the camera some time to load
 first_frame = None
 status_list = []
 count = 1
+
+def clean_folder():
+    images = glob.glob("images/*.png")
+    for image in images:
+        os.remove(image)
 
 while True:
     status = 0
@@ -43,8 +50,15 @@ while True:
     status_list.append(status)
     status_list = status_list[-2:]
 
-    #if status_list[0] == 1 and status_list[1] == 0: # This measns that obejct has just exited the frame
-       # emailing.send_email(image_with_object)
+    if status_list[0] == 1 and status_list[1] == 0: # This measns that obejct has just exited the frame
+        email_thread = Thread(target=emailing.send_email, args=(image_with_object, )) # THREADING IN PYTHON. FUNTION CALLING EXAMPLE
+        email_thread.daemon = True
+        clean_thread = Thread(target=emailing.clean_folder)  # after sending out the email we clean the folder
+        clean_thread.daemon = True
+
+        email_thread.start() # SEND EMAIL
+
+
 
     cv2.imshow("Video", frame)
     cv2.imshow("My video", dil_frame)
@@ -53,3 +67,4 @@ while True:
         break
 
 video.release()
+clean_thread.start() # DELETE IMAGES
